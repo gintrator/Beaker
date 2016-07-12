@@ -73,7 +73,7 @@ class Server:
         path    -> str
         version -> str
         headers -> dict
-        body -> str
+        body    -> str
         """
         parsed_request = {}
         request = request.split(CRLF)

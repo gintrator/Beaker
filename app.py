@@ -2,7 +2,7 @@ from server import Server
 from beaker import Beaker
 
 port = 5000
-app = Beaker("Beaker Application v1.1.")
+app = Beaker("Beaker Application v0.1.")
 
 @app.produces('text/html')
 @app.register('/', "GET")
@@ -24,7 +24,7 @@ def name():
 @app.produces('application/json')
 @app.register('/json', "GET")
 def json():
-    return '{"data", "value", "data2": "value2"}'
+    return '{"data":"value", "data2": "value2"}'
 
 
 server = Server(5000, app)
