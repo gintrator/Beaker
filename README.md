@@ -14,10 +14,13 @@ from beaker import Beaker
 app = Beaker('Sample App')
 
 @app.produces('text/html')
-@app.register('/get', "GET")
-def get():
-  return "<h1>You've Got Me!</h1>"
+@app.get('/get')
+def get(req, res):
+  res['body'] = "<h1>You've Got Me!</h1>"
+  res['status'] = 200
 ```
+
+Similarly the decorators `@app.post` and `@app.delete` do what you'd except.
 
 To serve this app, run the following.
 

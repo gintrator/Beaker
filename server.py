@@ -23,6 +23,7 @@ class Server:
         self.server_socket.listen(1)
         self.port = port
         self.app = app
+        self.server_name = 'pygi'
 
     def serve(self):
         print "Serving at {0}:{1}. Waiting for requests.".format(socket.gethostname(), self.port)
@@ -30,7 +31,7 @@ class Server:
             connection_socket, address = self.server_socket.accept()
             data = connection_socket.recv(1024)
             req = self.parse_request(data)
-            res = self.create_empty_response()
+            res = self.create_new_response()
             valid_request = self.app.request(req, res)
             if not valid_request:
                 connection_socket.send(HTTP_NOT_FOUND)
@@ -38,30 +39,22 @@ class Server:
                 connection_socket.send(self.create_response_str(res))
             connection_socket.close()
 
-    def create_empty_response(self):
-        """
-        Creates an empty response dict.
-        """
-        response = {}
-        response['initial'] = 'HTTP/1.0 200 OK'
-        response['server'] = 'pygi'
-        response['headers'] = {}
-        response['headers']['Date'] = time.strftime('%a, %d %b %Y %H:%M:%S %Z')
-        response['headers']['Content-Type'] = 'text/plain'
-        response['headers']['Content-Length'] = '0'
-        response['body'] = ''
-        return response
+    def create_new_response(self):
+        res = {'status': 500,
+               'body': '',
+               'content': 'text/plain'}
+        return res
 
-    def create_response_str(self, response):
+    def create_response_str(self, res):
         """
         Turn this response dict into an HTTP response string.
         """
-        headers = [ response['initial'],
-                   "Server: {0}".format(response['server']),
-                   "Date: {0}".format(response['headers']['Date']),
-                   "Content-Type: {0}".format(response['headers']['Content-Type']),
-                   "Content-Length: {0}".format(response['headers']['Content-Length'])]
-        response = "{0}{1}{2}{3}".format(CRLF.join(headers), CRLF, CRLF, response['body'])
+        headers = ["HTTP/1.0 200 OK",
+                   "Server: {0}".format(self.server_name),
+                   "Date: {0}".format(time.strftime('%a, %d %b %Y %H:%M:%S %Z')),
+                   "Content-Type: {0}".format(res['content']),
+                   "Content-Length: {0}".format(len(res['body']))]
+        response = "{0}{1}{2}{3}".format(CRLF.join(headers), CRLF, CRLF, res['body'])
         return response
 
     def parse_request(self, request):
@@ -69,7 +62,7 @@ class Server:
         Marshall a raw HTTP request into a dict.
 
         Returns dict with keys:
-        method  -> str 
+        method  -> str
         path    -> str
         version -> str
         headers -> dict
@@ -80,7 +73,7 @@ class Server:
         initial_line = request[0].split()
         parsed_request['method'] = initial_line[0]
         parsed_request['path'] = initial_line[1]
-        parsed_request['version'] = initial_line[2] 
+        parsed_request['version'] = initial_line[2]
         headers = {}
         body_i = 0
         for i in range(1, len(request)):

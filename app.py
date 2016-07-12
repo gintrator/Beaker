@@ -5,8 +5,8 @@ port = 5000
 app = Beaker("Beaker Application v0.1.")
 
 @app.produces('text/html')
-@app.register('/', "GET")
-def index():
+@app.get('/')
+def index(req, res):
     html = ["<h1>Welcome to a Beaker app!</h1>",
             "<p>This is a sample beaker application.</p>",
             "<p>It's used to build simple RESTful services.</p>",
@@ -14,18 +14,20 @@ def index():
             "<p>Check out a <a href='/json'>json endpoint</a></p>",
             "</br>",
             "<p>by Gabriel Intrator</p>"]
-    return ''.join(html) 
+    res['body'] = ''.join(html)
+    res['status'] = 200
 
 @app.produces('text/plain')
-@app.register('/name', "GET")
-def name():
-    return app.name
+@app.get('/name')
+def name(req, res):
+    res['body'] = app.name
+    res['status'] = 200
 
 @app.produces('application/json')
-@app.register('/json', "GET")
-def json():
-    return '{"data":"value", "data2": "value2"}'
-
+@app.get('/json')
+def json(req, res):
+    res['body'] = '{"data": "value", "data2": "value2"}'
+    res['status'] = 200
 
 server = Server(5000, app)
 server.serve()
