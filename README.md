@@ -38,7 +38,7 @@ def person(req, name, age):
 
 To call this endpoint, put something like this in your browser: `http://localhost:5000/person/bob/23?a=z&z=a`
 
-A response with the text `Hello my name is bob and I am 23 years old.` will be returned. Additionally, with the function `person`, the dict req.args will looks like this: `{'a': 'z', 'z': 'a'}`.
+A response with the text `Hello my name is bob and I am 23 years old.` will be returned. Additionally, within the function `person`, the dict req.args will look like this: `{'a': 'z', 'z': 'a'}`.
 
 To serve this app, run the following.
 
@@ -54,17 +54,19 @@ You should now be able to ping your endpoints at `http://localhost:5000`.
 
 ### URL Variables
 
-Implementing URL variables turned out to be harder than I thought. Since they are unknown until the request arrives, its difficult to dispatch control to the right endpoint. With static routes, a dictionary works great, a (path, method) pair is unique. However, this is not the case when any part of the path may or not be a variable.
+Implementing URL variables turned out to be harder than I thought. Since they are unknown until the request arrives, it's difficult to dispatch control to the right endpoint. With static routes, a dictionary works great, a (path, method) pair is unique. However, this is not the case when any part of the path may or not be a variable.
 
-Beaker implements a cool tree-based solution. It maintains a tree of dictionaries. Here's an example. 
+Beaker implements a tree-based solution, via a tree of dictionaries. Here's an example. Assume we have the following endpoints: `/top/left`, `/top/right`, `/top/<var>/left`, and `/top/<var>/right`.
 
-If we have the endpoints `/top/left`, `/top/right`, `/top/<var>/left`, and `/top/<var>/right`, they will be parsed into the tree below. the `'func` and `'url_var'` keys here are placeholders, the actual keys are tuples so that these are still available as path names. Now we can parse an incoming request easily and efficiently. On every next level of the tree, we check first for exact matches, and then for a potential variable. If the tree below the variables matches the rest of the request, we can keep on going. Once we reach the end of the url path we just return the function at the last entry, and call it with the correct arguments.
+When they are registered, they will be parsed into the tree below. the `'func'` and `'url_var'` keys here are placeholders, the actual keys are tuples so that these are still available as path names. Now we can parse an incoming request easily and efficiently. On every next level of the tree, we check first for exact matches, and then for a variable. If the tree below the variables matches the rest of the request, we can keep on going. Once we reach the end of the URL path we just return the function at the last entry, and call it with the correct arguments.
+
+While this is not as fast as dict lookups for static endpoint paths, its decently efficient. It's also a natural way to store things like files/urls, and allows for a simple implementation of url variables.
 
 ```
 {'top': {'left':  {'func': <function>,
          'right': {'func': <function>,
-                  'url_var': {'left':  {'func': <function>,
-                                       'right': {'func': <function>}}}}}}}
+                   'url_var': {'left':  {'func': <function>,
+                               'right': {'func': <function>}}}}}}}
 ```
 
 ### Request and Response Objects
