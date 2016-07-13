@@ -71,7 +71,7 @@ While this is not as fast as dict lookups for static endpoint paths, its decentl
 
 ### Request and Response Objects
 
-Each endpoint function and argument `req` of type `Request` which allow you to inspect the incoming request. To return a response, use the `Response` object. The only necessary fields are `Response.body` and `Response.status`. Since both of these are essentially python dicts with dot notation, the regular dict constructors will work as well. i.e. `res = Response(body='text', status=200)`.
+Each endpoint function will have an argument `req` of type `Request` which allow you to inspect the incoming request. To return a response, use the `Response` object. The only necessary fields are `Response.body` and `Response.status`. Since both of these are essentially python dicts with dot notation, the regular dict constructors will work as well. i.e. `res = Response(body='text', status=200)`.
 
 The argument `req` will have the following fields.
 
@@ -84,7 +84,7 @@ body    -> Payload
 
 ```
 
-A Response object should be returned frmo an endpoint with the following field filled.
+A Response object should be returned from an endpoint with the following fields filled.
 
 ```
 body   -> Payload
