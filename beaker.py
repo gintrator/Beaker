@@ -49,7 +49,6 @@ class Beaker:
 
     def _add_to_routes(self, path, method, func, mimetype):
         paths = self._replace_path_vars(path, method, func)
-        #paths = self._path_to_list(path)
         def add_routes(routes, paths):
             if len(paths) == 1:
                 if paths[0] not in routes:
@@ -79,7 +78,7 @@ class Beaker:
                     routes = routes[Beaker.VAR_KEY]
                     path_taken += Beaker.VAR_KEY
                 else:
-                    return (None, None)
+                    return (None, None, None)
             func, mimetype = routes[(Beaker.FUNC_KEY, method)]
             return (func, mimetype, path_taken)
         except KeyError as e:        
@@ -96,7 +95,7 @@ class Beaker:
             var = self._check_var(path_part) 
             if var:
                 paths[i] = Beaker.VAR_KEY
-                self._func_vars[(func.__name__)].append(var)
+                self._func_vars[func.__name__].append(var)
         return paths
 
     def _check_var(self, path_part):
@@ -131,15 +130,13 @@ class Beaker:
         print "Request: {0} {1}".format(method, path)
         func, mimetype, path_taken = self._find_path_func(path, method)
         if not func:
-            print "No such path found"
+            print "Not found: {0}".format(path)
             return False
         req.args = args
         kwargs = self._get_kwargs(path, path_taken, func)
         res = func(req, **kwargs)
-        print res
         server_res['body'] = res.body
         server_res['status'] = res.status
         server_res['mimetype'] = mimetype
         return True
-
 

@@ -52,6 +52,21 @@ server.serve()
 
 You should now be able to ping your endpoints at `http://localhost:5000`.
 
+### URL Variables
+
+Implementing URL variables turned out to be harder than I thought. Since they are unknown until the request arrives, its difficult to dispatch control to the right endpoint. With static routes, a dictionary works great, a (path, method) pair is unique. However, this is not the case when any part of the path may or not be a variable.
+
+Beaker implements a cool tree-based solution. It maintains a tree of dictionaries. Here's an example. 
+
+If we have the endpoints `/top/left`, `/top/right`, `/top/<var>/left`, and `/top/<var>/right`, they will be parsed into the tree below. the `'func` and `'url_var'` keys here are placeholders, the actual keys are tuples so that these are still available as path names. Now we can parse an incoming request easily and efficiently. On every next level of the tree, we check first for exact matches, and then for a potential variable. If the tree below the variables matches the rest of the request, we can keep on going. Once we reach the end of the url path we just return the function at the last entry, and call it with the correct arguments.
+
+```
+{'top': {'left':  {'func': <function>,
+         'right': {'func': <function>,
+                  'url_var': {'left':  {'func': <function>,
+                                       'right': {'func': <function>}}}}}}}
+```
+
 ### Request and Response Objects
 
 Each endpoint function and argument `req` of type `Request` which allow you to inspect the incoming request. To return a response, use the `Response` object. The only necessary fields are `Response.body` and `Response.status`. Since both of these are essentially python dicts with dot notation, the regular dict constructors will work as well. i.e. `res = Response(body='text', status=200)`.
