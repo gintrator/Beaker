@@ -52,7 +52,7 @@ class Server:
         headers = ["HTTP/1.0 200 OK",
                    "Server: {0}".format(self.server_name),
                    "Date: {0}".format(time.strftime('%a, %d %b %Y %H:%M:%S %Z')),
-                   "Content-Type: {0}".format(res['content']),
+                   "Content-Type: {0}".format(res['mimetype']),
                    "Content-Length: {0}".format(len(res['body']))]
         response = "{0}{1}{2}{3}".format(CRLF.join(headers), CRLF, CRLF, res['body'])
         return response

@@ -1,12 +1,13 @@
 from server import Server
 from beaker import Beaker
+from beaker import Request
+from beaker import Response
 
 port = 5000
 app = Beaker("Beaker Application v0.1.")
 
-@app.produces('text/html')
-@app.get('/')
-def index(req, res):
+@app.get('/', mimetype='text/html')
+def index(req):
     html = ["<h1>Welcome to a Beaker app!</h1>",
             "<p>This is a sample beaker application.</p>",
             "<p>It's used to build simple RESTful services.</p>",
@@ -14,20 +15,21 @@ def index(req, res):
             "<p>Check out a <a href='/json'>json endpoint</a></p>",
             "</br>",
             "<p>by Gabriel Intrator</p>"]
-    res['body'] = ''.join(html)
-    res['status'] = 200
+    return Response(body="".join(html), status=200)
 
-@app.produces('text/plain')
-@app.get('/name')
-def name(req, res):
-    res['body'] = app.name
-    res['status'] = 200
+@app.get('/name/<arg>', mimetype='text/plain')
+def name(req, arg):
+    res = """Welcome to {0}.
+             Received url argument: {1}
+             Received url parameters: {2}
+          """.format(app.name, arg, req.args)
+    return Response(body=res, status=200)
 
-@app.produces('application/json')
-@app.get('/json')
-def json(req, res):
-    res['body'] = '{"data": "value", "data2": "value2"}'
-    res['status'] = 200
+@app.get('/json', mimetype='application/json')
+def json(req):
+    json = '{"data": "value", "data2": "value2"}'
+    return Response(body=json, status=200)
 
-server = Server(5000, app)
+
+server = Server(port, app)
 server.serve()
