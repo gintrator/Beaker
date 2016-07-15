@@ -3,7 +3,7 @@ from beaker import Beaker
 from beaker import Request
 from beaker import Response
 
-port = 5001
+port = 5000
 app = Beaker("Beaker Application v0.1.")
 
 @app.get('/', mimetype='text/html')
@@ -19,9 +19,10 @@ def index(req):
 
 @app.get('/name/<arg>', mimetype='text/plain')
 def name(req, arg):
-    res = """Welcome to {0}.
-             Received url argument: {1}
-             Received url parameters: {2}
+    res = """
+          Welcome to {0}.
+          Received url argument: {1}
+          Received url parameters: {2}
           """.format(app.name, arg, req.args)
     return Response(body=res, status=200)
 
@@ -30,6 +31,18 @@ def json(req):
     json = '{"data": "value", "data2": "value2"}'
     return Response(body=json, status=200)
 
+@app.get('/hello')
+@app.get('/two/<a>/<b>')
+def two(req, a='a', b='b'):
+    text = "{0} {1}".format(a, b)
+    return Response(body=text, status=200)
 
-server = Server(port, app)
-server.serve()
+@app.get('/<a>/<b>/<c>/<d>')
+def many(req, **args):
+    text = "{0}".format(args)
+    return Response(body=text, status=200)
+
+if __name__ == '__main__':
+    server = Server(port, app)
+    server.serve()
+

@@ -18,17 +18,19 @@ class Server:
     """
 
     def __init__(self, port, app, host=''):
-        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket.bind((host, port))
-        self.server_socket.listen(1)
         self.port = port
         self.app = app
+        self.host = host
         self.server_name = 'pygi'
 
     def serve(self):
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_socket.bind((self.host, self.port))
+        server_socket.listen(1)
         print "Serving at {0}:{1}. Waiting for requests.".format(socket.gethostname(), self.port)
         while True:
-            connection_socket, address = self.server_socket.accept()
+            connection_socket, address = server_socket.accept()
             data = connection_socket.recv(1024)
             req = self.parse_request(data)
             res = self.create_new_response()
