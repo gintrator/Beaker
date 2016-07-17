@@ -153,6 +153,7 @@ class Beaker:
         req.method = env['REQUEST_METHOD']
         req.query = env['QUERY_STRING']
         req.args = {}
+        req.body = env['wsgi.input'].read()
         return req
 
     def _get_args(self, query):

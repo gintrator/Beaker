@@ -4,9 +4,9 @@ Put it in a bottle and shake it all up, affectionately named after Flask. Beaker
 
 This project is an experiment in building a small full-stack web service. This is mainly an attempt to figure out how something like Flask is implemented by duplicating some of its features.
 
-`server.py` contains a Server class. The server is called `pygi`, pronounced "piggy". It's a very simple web server based on the python `sockets` library. It includes functions to marshall HTTP requests to and from python dictionaries.
+`server.py` contains a Server class. The server is called `pygi`, pronounced "piggy". It's a simple web server based on the python `sockets` library. It includes functions to marshall HTTP requests to and from python dictionaries.
 
-Both Beaker and pygi implement the WSGI interface and servers and applications. Beaker can be run on with any WSGI compliant server. [WSGI Specification](https://www.python.org/dev/peps/pep-0333/).
+Both Beaker and pygi implement the [WSGI](https://www.python.org/dev/peps/pep-0333/) interface. Beaker can be run on with any WSGI compliant server.
 
 ## Using Beaker
 
@@ -76,19 +76,20 @@ While this is not as fast as dict lookups for static endpoint paths, its decentl
 Each endpoint function will have an argument `req` of type `Request` which allow you to inspect the incoming request. To return a response, use the `Response` object. The only necessary fields are `Response.body` and `Response.status`. Since both of these are essentially python dicts with dot notation, the regular dict constructors will work as well. i.e. `res = Response(body='text', status=200)`.
 
 The argument `req` will have the following fields.
-
-```
-method  -> REST Verb
-path    -> URI
-version -> HTTP Version
-headers -> Python dict w/ HTTP Headers
-body    -> Payload
-
-```
+| Key     | Description  | Type |
+| ------- | ------------ | ---- |
+| method  | REST Verb    | str  |
+| path    | Request Path | str  |
+| args    | Query Args   | dict |
+| version | HTTP Version | str  |
+| headers | HTTP Headers | dict |
+| body    | Payload      | str  |
 
 A Response object should be returned from an endpoint with the following fields filled.
+| Key      | Description       | Default    | Type | 
+| -------- | ----------------- | ---------- | ---- |
+| status   | HTTP Status Code  | 200        | int  |
+| body     | Payload           | None       | str  |
+| mimetype | Content Type      | text/plain | str  |
 
-```
-body   -> Payload
-status -> HTTP Status Code
-```
+
