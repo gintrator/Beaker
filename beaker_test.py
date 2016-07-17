@@ -25,31 +25,37 @@ def one_var(req, a):
 
 def test_simple_endpoint():
     req = Request(path="/simple/endpoint", method="GET")
-    res = Response()
-    app.request(req, res)
-    assert res.body == 'simple endpoint'
+    res = app.request(req)
     assert res.status == 200
+    assert res.body == 'simple endpoint'
 
 def test_url_params():
-    req = Request(path="/params?a=hello&b=there", method="GET")
-    res = Response()
-    app.request(req, res)
-    assert res.body == 'hello there'
+    req = Request(path="/params", query="a=hello&b=there", method="GET")
+    res = app.request(req)
     assert res.status == 200
+    assert res.body == 'hello there'
 
 def test_three_vars():
     req = Request(path="/vars/hello/there/not/me", method="GET")
-    res = Response()
-    app.request(req, res)
-    assert res.body == 'hello there me'
+    res = app.request(req)
     assert res.status == 200
+    assert res.body == 'hello there me'
 
 def test_one_var():
     req = Request(path="/vars/large/rat", method="GET")
-    res = Response()
-    app.request(req, res)
-    assert res.body == 'large rat'
+    res = app.request(req)
     assert res.status == 200
+    assert res.body == 'large rat'
+
+def test_partial_path():
+    req = Request(path="/vars/large", method="GET")
+    res = app.request(req)
+    assert res.status == 404
+
+def test_no_such_path():
+    req = Request(path="/fake/path", method="GET")
+    res = app.request(req)
+    assert res.status == 404
 
 def test_paths():
     path_a = '/this/is/a/path'
@@ -61,6 +67,9 @@ def test_paths():
 if __name__ == '__main__':
     test_paths()
     test_simple_endpoint()
-    test_url_params()
     test_three_vars()
     test_one_var()
+    test_no_such_path()
+    test_partial_path()
+    test_url_params()
+    print "Tests Passed"

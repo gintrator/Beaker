@@ -1,12 +1,17 @@
 import socket
-import pprint
 import time
+import io
 
 HTTP_OK = 'HTTP/1.0 200 OK\r\n\r\n'
 HTTP_NOT_FOUND = 'HTTP/1.0 404 NOT FOUND\r\n\r\n'
 CRLF = '\r\n'
+HTTP_CODES = {200: 'OK',
+              400: 'BAD REQUEST',
+              404: 'NOT FOUND',
+              500: 'INTERNAL SERVER ERROR'}
 
 class Server:
+
 
     """
     Simple HTTP Server
@@ -22,44 +27,45 @@ class Server:
         self.app = app
         self.host = host
         self.server_name = 'pygi'
+        self.server_socket = self._create_server_socket()
 
-    def serve(self):
+    def _create_server_socket(self):
+        """
+        Create the main server socket.
+        """
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server_socket.bind((self.host, self.port))
         server_socket.listen(1)
+        return server_socket
+
+    def serve(self):
+        """
+        Server forever.
+        """
         print "Serving at {0}:{1}. Waiting for requests.".format(socket.gethostname(), self.port)
         while True:
-            connection_socket, address = server_socket.accept()
+            connection_socket, address = self.server_socket.accept()
             data = connection_socket.recv(1024)
-            req = self.parse_request(data)
-            res = self.create_new_response()
-            valid_request = self.app.request(req, res)
-            if not valid_request:
-                connection_socket.send(HTTP_NOT_FOUND)
-            else:
-                connection_socket.send(self.create_response_str(res))
+            req = self._parse_request(data)
+            environ = self._create_environ(req)
+            res_data = self.app(environ, self._start_response_on_socket(connection_socket))
+            for res in res_data:
+                connection_socket.send(res)
             connection_socket.close()
 
-    def create_new_response(self):
-        res = {'status': 500,
-               'body': '',
-               'content': 'text/plain'}
-        return res
+    def _start_response_on_socket(self, connection_socket):
+        def start_response(status, headers):
+            http_headers = ["HTTP/1.0 {0}".format(status),
+                            "Server: {0}".format(self.server_name),
+                            "Date: {0}".format(time.strftime('%a, %d %b %Y %H:%M:%S %Z'))]
+            for (header, value) in headers:
+                http_headers.append('{0}: {1}'.format(header, value))
+            response = "{0}{1}{2}".format(CRLF.join(http_headers), CRLF, CRLF)
+            connection_socket.send(response)
+        return start_response
 
-    def create_response_str(self, res):
-        """
-        Turn this response dict into an HTTP response string.
-        """
-        headers = ["HTTP/1.0 200 OK",
-                   "Server: {0}".format(self.server_name),
-                   "Date: {0}".format(time.strftime('%a, %d %b %Y %H:%M:%S %Z')),
-                   "Content-Type: {0}".format(res['mimetype']),
-                   "Content-Length: {0}".format(len(res['body']))]
-        response = "{0}{1}{2}{3}".format(CRLF.join(headers), CRLF, CRLF, res['body'])
-        return response
-
-    def parse_request(self, request):
+    def _parse_request(self, request):
         """
         Marshall a raw HTTP request into a dict.
 
@@ -85,6 +91,32 @@ class Server:
             header, value = [e.strip() for e in request[i].split(':', 1)]
             headers[header] = value
         parsed_request['headers'] = headers
-        parsed_request['body'] = request[body_i].strip()
+        body = request[body_i].strip()
+        if len(body) > 0:
+            parsed_request['body'] = request[body_i].strip()
         return parsed_request
+
+
+    def _create_environ(self, req):
+        """
+        Convert a request dict into a WSGI environ dict.
+        """
+        environ = {}
+        args = ''
+        path = req['path']
+        if '?' in path:
+            path, args = path.split('?')
+        environ['PATH_INFO'] = path
+        environ['QUERY_STRING'] = args
+        environ['REQUEST_METHOD'] = req['method']
+        if 'Content-Type' in req['headers']:
+            environ['CONTENT_TYPE'] = req['headers']['Content-Type']
+        if 'Content-Length' in req['headers']:
+            environ['CONTENT_LENGTH'] = req['headers']['Content-Length']
+        if 'Content-Type' in req['headers']:
+            environ['CONTENT_TYPE'] = req['headers']['Content-Type']
+        if 'body' in req:
+            environ['wsgi.input'] = io.StringIO(u'{0}'.format(req['body']))
+        return environ
+
 

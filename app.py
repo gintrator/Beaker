@@ -1,4 +1,5 @@
 from server import Server
+from wsgiref.simple_server import make_server
 from beaker import Beaker
 from beaker import Request
 from beaker import Response
@@ -43,6 +44,11 @@ def many(req, **args):
     return Response(body=text, status=200)
 
 if __name__ == '__main__':
-    server = Server(port, app)
-    server.serve()
+    use_wsgi_ref = False
+    if use_wsgi_ref:
+        httpd = make_server('', port, app)
+        httpd.serve_forever()
+    else:
+        server = Server(port, app)
+        server.serve()
 
