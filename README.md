@@ -1,10 +1,12 @@
 # Beaker
 
-Put it in a bottle and shake it all up, affectionately named after Flask.
+Put it in a bottle and shake it all up, affectionately named after Flask. Beaker is a framework to define REST based services.
 
 This project is an experiment in building a small full-stack web service. This is mainly an attempt to figure out how something like Flask is implemented by duplicating some of its features.
 
 `server.py` contains a Server class. The server is called `pygi`, pronounced "piggy". It's a very simple web server based on the python `sockets` library. It includes functions to marshall HTTP requests to and from python dictionaries.
+
+Both Beaker and pygi implement the WSGI interface and servers and applications. Beaker can be run on with any WSGI compliant server. [WSGI Specification](https://www.python.org/dev/peps/pep-0333/).
 
 ## Using Beaker
 
