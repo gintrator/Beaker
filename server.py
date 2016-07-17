@@ -2,13 +2,7 @@ import socket
 import time
 import io
 
-HTTP_OK = 'HTTP/1.0 200 OK\r\n\r\n'
-HTTP_NOT_FOUND = 'HTTP/1.0 404 NOT FOUND\r\n\r\n'
 CRLF = '\r\n'
-HTTP_CODES = {200: 'OK',
-              400: 'BAD REQUEST',
-              404: 'NOT FOUND',
-              500: 'INTERNAL SERVER ERROR'}
 
 class Server:
 
@@ -92,8 +86,7 @@ class Server:
             headers[header] = value
         parsed_request['headers'] = headers
         body = request[body_i].strip()
-        if len(body) > 0:
-            parsed_request['body'] = request[body_i].strip()
+        parsed_request['body'] = request[body_i].strip()
         return parsed_request
 
 

@@ -76,6 +76,7 @@ While this is not as fast as dict lookups for static endpoint paths, its decentl
 Each endpoint function will have an argument `req` of type `Request` which allow you to inspect the incoming request. To return a response, use the `Response` object. The only necessary fields are `Response.body` and `Response.status`. Since both of these are essentially python dicts with dot notation, the regular dict constructors will work as well. i.e. `res = Response(body='text', status=200)`.
 
 The argument `req` will have the following fields.
+
 | Key     | Description  | Type |
 | ------- | ------------ | ---- |
 | method  | REST Verb    | str  |
@@ -86,6 +87,7 @@ The argument `req` will have the following fields.
 | body    | Payload      | str  |
 
 A Response object should be returned from an endpoint with the following fields filled.
+
 | Key      | Description       | Default    | Type | 
 | -------- | ----------------- | ---------- | ---- |
 | status   | HTTP Status Code  | 200        | int  |
