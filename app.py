@@ -18,6 +18,11 @@ def index(req):
             "<p>by Gabriel Intrator</p>"]
     return Response(body="".join(html), status=200)
 
+@app.get('/red')
+@app.redirect('/')
+def red_endpoint(req):
+    print 'hit red endpoint'
+
 @app.get('/name/<arg>', mimetype='text/plain')
 def name(req, arg):
     res = """
@@ -42,6 +47,9 @@ def two(req, a='a', b='b'):
 def many(req, **args):
     text = "{0}".format(args)
     return Response(body=text, status=200)
+
+app.static('/static', 'app.py')
+app.static('/static', 's.py')
 
 if __name__ == '__main__':
     use_wsgi_ref = False

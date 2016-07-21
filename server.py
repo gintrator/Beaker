@@ -3,6 +3,7 @@ import time
 import io
 
 CRLF = '\r\n'
+LOG = True
 
 class Server:
 
@@ -43,6 +44,8 @@ class Server:
             data = connection_socket.recv(1024)
             req = self._parse_request(data)
             environ = self._create_environ(req)
+            if LOG:
+                print req['method'], req['path']
             res_data = self.app(environ, self._start_response_on_socket(connection_socket))
             for res in res_data:
                 connection_socket.send(res)
