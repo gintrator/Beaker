@@ -44,13 +44,29 @@ class Beaker:
                    400: '400 BAD REQUEST',
                    404: '404 NOT FOUND',
                    500: '500 INTERNAL SERVER ERROR'}
+    _VAR_TYPES = {'int': int,
+                  'float': float,
+                  'str': str}
 
     def __init__(self, name='default'):
         self.name = name
+        
+        # self._routes stores a mapping of URL paths to functions.
+        # Used to map incoming requests to function.
         self._routes = {}
+        
+        # self._static stores a mapping of static paths to static resources.
         self._static = {}
+
+        # self._funcs stores a mapping of function names to functions.
         self._funcs = {}
-        self._func_paths = {}
+
+        # self._func_routes stores a mapping of function names to paths.
+        # Used to recreate URL's from function names and URL variables.
+        self._func_routes = {}
+        
+        # self._func_vars stores a mapping of function names to its URL variables and types.
+        # Used to call an endpoint function with the correct URL variables.
         self._func_vars = defaultdict(list)
 
     def __call__(self, *args, **kwargs):
@@ -75,22 +91,25 @@ class Beaker:
     def static(self, path, resource, mimetype='text/plain'):
         self._static[path + '/' + resource] = (resource, mimetype)
 
-    def redirect(self, path, method='GET'):
-        def redirected(func):
-            def call_endpoint(req):
-                func(req)
-                req.path = path
-                req.method = method
-                return self.request(req)
-            return call_endpoint
-        return redirected
-    
+    def redirect(self, path, req):
+        req.path = path
+        return app.request(req)
+
+    def url_for(self, func_name, **kwargs):
+        paths = self._func_routes[func_name]
+        func_vars = self._func_vars[func_name]
+        for i in range(len(paths)):
+            if paths[i] is Beaker._VAR_KEY:
+                paths[i] = str(kwargs[func_vars.pop(0)[1]])
+        return self._list_to_path(paths)
+
     def _add_route_func(self, path, method, func_name, mimetype):
         """
         Recursively breaks down the path into dictionaries, like a filesystem folder structure.
         Stores a mapping to the endpoint function at the end of the path.
         """
         paths = self._replace_path_vars(path, method, func_name)
+        self._func_routes[func_name] = paths
         routes = self._routes
         func_signature = (Beaker._FUNC_KEY, method)
         for i in range(len(paths)):
@@ -134,7 +153,12 @@ class Beaker:
             var = self._check_var(path_part)
             if var:
                 paths[i] = Beaker._VAR_KEY
-                self._func_vars[func_name].append(var)
+                type_func = str
+                if ':' in var:
+                    type_name, var = var.split(':')
+                    if type_name in Beaker._VAR_TYPES:
+                        type_func = Beaker._VAR_TYPES[type_name]
+                self._func_vars[func_name].append((type_func, var))
         return paths
 
     def _check_var(self, path_part):
@@ -164,8 +188,14 @@ class Beaker:
         """
         path_list = self._path_to_list(path)
         func_vars = self._func_vars[func_name]
-        kwargs = {k: v for (k, v) in zip(func_vars, filter(lambda e: e not in func_route, path_list))}
-        return kwargs
+        kwargs = {}
+        try:
+            for (key, value) in zip(func_vars, filter(lambda e: e not in func_route, path_list)):
+                type_func, var = key
+                kwargs[var] = type_func(value)
+            return kwargs
+        except ValueError:
+            return None
 
     def _handle_endpoint_request(self, req):
         """
@@ -177,6 +207,8 @@ class Beaker:
             return Response(status=404, body='Resource not found.', mimetype='text/plain')
         func_name, mimetype, func_route = func_data
         kwargs = self._get_kwargs(req.path, func_route, func_name)
+        if kwargs is None:
+            return Response(status=400, body='Wrong type in URL variable.', mimetype='text/plain')
         res = self._funcs[func_name](req, **kwargs)
         res.mimetype = mimetype
         if not res.status:

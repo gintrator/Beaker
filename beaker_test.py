@@ -64,6 +64,9 @@ def test_paths():
     assert app._list_to_path(app._path_to_list(path_a)) == path_a
     assert app._list_to_path(app._path_to_list(path_b)) == path_b_correct
 
+def test_url_for():
+    assert app.url_for('one_var', a=1) == '/vars/1/rat'
+
 if __name__ == '__main__':
     test_paths()
     test_simple_endpoint()
@@ -72,4 +75,5 @@ if __name__ == '__main__':
     test_no_such_path()
     test_partial_path()
     test_url_params()
+    test_url_for()
     print "Tests Passed"
