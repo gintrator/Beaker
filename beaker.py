@@ -92,16 +92,28 @@ class Beaker:
         self._static[path + '/' + resource] = (resource, mimetype)
 
     def redirect(self, path, req):
+        """
+        Redirect this request to the given path.
+        """
         req.path = path
-        return app.request(req)
+        return self.request(req)
 
     def url_for(self, func_name, **kwargs):
+        """
+        Find the URL for this function given the variables in kwargs.
+        """
+        # Mutates this path list if we don't copy - more general _replace_path_var?
         paths = self._func_routes[func_name]
         func_vars = self._func_vars[func_name]
+        url_paths = []
+        var_index = 0
         for i in range(len(paths)):
             if paths[i] is Beaker._VAR_KEY:
-                paths[i] = str(kwargs[func_vars.pop(0)[1]])
-        return self._list_to_path(paths)
+                url_paths.append(str(kwargs[func_vars[var_index][1]]))
+                var_index += 1
+            else:
+                url_paths.append(paths[i])
+        return self._list_to_path(url_paths)
 
     def _add_route_func(self, path, method, func_name, mimetype):
         """

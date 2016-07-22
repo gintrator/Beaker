@@ -23,6 +23,26 @@ def one_var(req, a):
     text = '{0} rat'.format(a)
     return Response(body=text, status=200)
 
+@app.get('/redirect/<arg>')
+def redirection(req, arg):
+    return app.redirect(app.url_for('one_var', a=arg), req)
+
+@app.get('/integer/<int:arg>')
+def integer_arg(req, arg):
+    return Response(body=str(type(arg)), status=200)
+
+def test_arg_type():
+    req = Request(path="/integer/6", method="GET")
+    res = app.request(req)
+    assert res.status == 200
+    assert res.body == str(int)
+
+def test_redirect():
+    req = Request(path="/redirect/huge", method="GET")
+    res = app.request(req)
+    assert res.status == 200
+    assert res.body == 'huge rat'
+
 def test_simple_endpoint():
     req = Request(path="/simple/endpoint", method="GET")
     res = app.request(req)
@@ -68,6 +88,7 @@ def test_url_for():
     assert app.url_for('one_var', a=1) == '/vars/1/rat'
 
 if __name__ == '__main__':
+    test_arg_type()
     test_paths()
     test_simple_endpoint()
     test_three_vars()
@@ -76,4 +97,5 @@ if __name__ == '__main__':
     test_partial_path()
     test_url_params()
     test_url_for()
+    test_redirect()
     print "Tests Passed"
