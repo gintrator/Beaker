@@ -6,7 +6,7 @@ The main Beaker class is implemented in `beaker.py` and its tests in `beaker_tes
 
 `server.py` contains a Server class. The server is called `pygi`, pronounced "piggy". It's a simple web server based on the python `sockets` library.
 
-There is a sample app in `app.py` defining some endpoints that demonstrate some features of Beaker.
+There is a sample Beaker app in `app.py` defining endpoints that demonstrate available features.
 
 Both Beaker and pygi implement the [WSGI](https://www.python.org/dev/peps/pep-0333/) interface. Beaker can be run on with any WSGI compliant server.
 
@@ -26,7 +26,7 @@ This project is an experiment in building a small full-stack web service framewo
 
 ## Simple Route
 
-This snippet defines an endpoint at `/get` endpoint to prodouce some HTML.
+This snippet defines an endpoint at `/get` that prodoces some HTML.
 
 ```python
 from beaker import Beaker
@@ -43,8 +43,16 @@ def func(req):
 
 Similarly the decorators `@app.post` and `@app.delete` do what you'd except.
 
+## Static Routes.
+
+Declare static resources using the `app.static(path, resource, mimetype='text/plain')` method. Here's a snippet to declare a static CSS file at `/static/style.css`.
+
+```python
+app.static('static', 'style.css', mimetype='text/css')
+```
+
 ## Route Variables and Parameters
-To support arguments, use brackets in the route declaration. Your declared arguments are injected into the handling function when the endpoint is called. URL parameters are marshalled into a Python dictionary and are available at `req.args`.
+To use URL variables, use brackets in the route declaration. Your declared arguments are injected into the handling function when the endpoint is called. URL parameters are marshalled into a Python dictionary and are available at `req.args`.
 
 ```Python
 @app.get('/person/<name>/<age>')
@@ -58,17 +66,9 @@ To call this endpoint, put something like this in your browser: `http://localhos
 A response with the text `Hello my name is bob and I am 23 years old.` will be returned. Additionally, within the function `person`, the dict req.args will look like this: `{'a': 'z', 'z': 'a'}`.
 
 
-## Static Routes.
-
-Declare static resources using the `app.static(path, resource, mimetype='text/plain')` method. Here's a snippet to declare a static CSS file at `/static/style.css`.
-
-```python
-app.static('static', 'style.css', mimetype='text/css')
-```
-
 ## Redirection and Generating URLs
 
-Redirect to other endpoints by returning `app.redirect(path, req)` instead of a Response. To redirect to a path that might contain variables, create URLs using `app.url_for(func_name, **kwargs)`. For instance, to generate a URL for the endpoint defined in the section above, call `app.url_for('person', name='bob', age=23)` to generate the URL `/person/bob/23`. Putting this all together, we can write the following endpoint.
+Redirect to other endpoints by returning `app.redirect(path, req)` instead of a Response. To redirect to a path that might contain variables, create URLs using `app.url_for(func_name, **kwargs)`. For instance, to generate a URL for the endpoint defined in the section above, call `app.url_for('person', name='bob', age='23')` to generate the URL `/person/bob/23`. Putting this all together, we can write the following endpoint.
 
 ```python
 @app.get('/makeperson')
