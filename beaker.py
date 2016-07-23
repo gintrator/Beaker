@@ -44,9 +44,6 @@ class Beaker:
                    400: '400 BAD REQUEST',
                    404: '404 NOT FOUND',
                    500: '500 INTERNAL SERVER ERROR'}
-    _VAR_TYPES = {'int': int,
-                  'float': float,
-                  'str': str}
 
     def __init__(self, name='default'):
         self.name = name
@@ -69,6 +66,10 @@ class Beaker:
         # Used to call an endpoint function with the correct URL variables.
         self._func_vars = defaultdict(list)
 
+        # self._filters are valid URL variable filters, these are the defaults.
+        # Before an endpoint is called with its URL vars, the appropriate filter is called.
+        self._filters = {'int': int, 'float': float, 'str': str}
+
     def __call__(self, *args, **kwargs):
         return self._wsgi_interface(*args, **kwargs)
 
@@ -87,6 +88,9 @@ class Beaker:
             self._add_route_func(path, method, func.__name__, mimetype)
             return func
         return decorator
+
+    def add_filter(self, name, filter_func):
+        self._filters[name] = filter_func
 
     def static(self, path, resource, mimetype='text/plain'):
         self._static[path + '/' + resource] = (resource, mimetype)
@@ -168,8 +172,8 @@ class Beaker:
                 type_func = str
                 if ':' in var:
                     type_name, var = var.split(':')
-                    if type_name in Beaker._VAR_TYPES:
-                        type_func = Beaker._VAR_TYPES[type_name]
+                    if type_name in self._filters:
+                        type_func = self._filters[type_name]
                 self._func_vars[func_name].append((type_func, var))
         return paths
 
@@ -193,7 +197,25 @@ class Beaker:
         """
         path_list = [''] + path_list
         return '/'.join(path_list)
-
+    
+    def request(self, req):
+        """
+        Takes a parameter req of type Request.
+        Validates Request and dispatches to appropriate handler.
+        Returns a Response object with appropriate fields.
+        """
+        try:
+            is_valid_req = self._validate_request(req)
+            if is_valid_req is not None:
+                return Response(status=400, body=is_valid_req, mimetype='text/plain')
+            if req.path in self._static:
+                return self._handle_static_request(req)
+            else:
+                return self._handle_endpoint_request(req)
+        except Exception as e:
+            error = "Internal Server Error: {0}.".format(repr(e))
+            return Response(status=500, body=error, mimetype='text/plain')
+    
     def _get_kwargs(self, path, func_route, func_name):
         """
         Find the mapping of function args to values for this endpoint.
@@ -254,24 +276,6 @@ class Beaker:
             except ValueError:
                 return 'Malformed URL Parameters.'
         return None
-    
-    def request(self, req):
-        """
-        Takes a parameter req of type Request.
-        Validates Request and dispatches to appropriate handler.
-        Returns a Response object with appropriate fields.
-        """
-        try:
-            is_valid_req = self._validate_request(req)
-            if is_valid_req is not None:
-                return Response(status=400, body=is_valid_req, mimetype='text/plain')
-            if req.path in self._static:
-                return self._handle_static_request(req)
-            else:
-                return self._handle_endpoint_request(req)
-        except Exception as e:
-            error = "Internal Server Error: {0}.".format(repr(e))
-            return Response(status=500, body=error, mimetype='text/plain')
     
     def _parse_env(self, env):
         req = Request()

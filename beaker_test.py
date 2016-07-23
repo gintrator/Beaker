@@ -31,6 +31,20 @@ def redirection(req, arg):
 def integer_arg(req, arg):
     return Response(body=str(type(arg)), status=200)
 
+app.add_filter('list', lambda var: var.split(','))
+
+@app.get('/list/<list:var>')
+def list_me(req, var):
+    assert type(var) == list
+    assert var[0] == 'a'
+    assert var[1] == 'b'
+    assert var[2] == 'c'
+    return Response(body=text, status=200)
+
+def test_filter():
+    req = Request(path="/list/a,b,c", method="GET")
+    res = app.request(req)
+
 def test_arg_type():
     req = Request(path="/integer/6", method="GET")
     res = app.request(req)
@@ -98,4 +112,5 @@ if __name__ == '__main__':
     test_url_params()
     test_url_for()
     test_redirect()
+    test_filter()
     print "Tests Passed"

@@ -51,8 +51,14 @@ def many(req, **args):
 app.static('/static', 'app.py')
 app.static('/static', 's.py')
 
-print app.url_for('name', arg='bobby')
-print app.url_for('many', a=1, b=2, c=3, d=4)
+app.add_filter('list', lambda var: var.split(','))
+
+@app.get('/dict/<list:var>')
+def filter_dict(req, var):
+    print type(var)
+    print (var)
+    return Response(body='OK', status=200)
+
 if __name__ == '__main__':
     use_wsgi_ref = False
     if use_wsgi_ref:
