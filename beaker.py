@@ -34,12 +34,12 @@ class Beaker:
 
     Flask-like functionality
     """
-
+    
     # Store variables and functions as routes without using a string.
     _VAR_KEY = ('var_key', )
     _FUNC_KEY = ('func_key', )
 
-    _VALID_METHODS = ['GET', 'POST', 'DELETE']
+    _VALID_METHODS = ('GET', 'POST', 'DELETE')
     _HTTP_CODES = {200: '200 OK',
                    400: '400 BAD REQUEST',
                    404: '404 NOT FOUND',
@@ -67,33 +67,44 @@ class Beaker:
         self._func_vars = defaultdict(list)
 
         # self._filters are valid URL variable filters, these are the defaults.
-        # Before an endpoint is called with its URL vars, the appropriate filter is called.
+        # Before an endpoint is called with its URL vars, the appropriate filter is called on the variable.
         self._filters = {'int': int, 'float': float, 'str': str}
+
+        # Functions to handle errors and their mimetypes. Registered with the error decorator.
+        self._error_handlers = {404: (lambda m: Response(status=404, body=m), 'text/plain'),
+                                400: (lambda m: Response(status=400, body=m), 'text/plain'),
+                                500: (lambda m: Response(status=500, body=m), 'text/plain')} 
 
     def __call__(self, *args, **kwargs):
         return self._wsgi_interface(*args, **kwargs)
 
     def get(self, path, mimetype='text/plain'):
-        return self.register(path, "GET", mimetype)
+        return self.register(path, 'GET', mimetype)
 
     def post(self, path, mimetype='text/plain'):
-        return self.register(path, "POST", mimetype)
+        return self.register(path, 'POST', mimetype)
 
     def delete(self, path, mimetype='text/plain'):
-        return self.register(path, "DELETE", mimetype)
+        return self.register(path, 'DELETE', mimetype)
 
-    def register(self, path, method="GET", mimetype='text/plain'):
+    def register(self, path, method='GET', mimetype='text/plain'):
         def decorator(func):
             self._funcs[func.__name__] = func
             self._add_route_func(path, method, func.__name__, mimetype)
             return func
         return decorator
-
+    
     def add_filter(self, name, filter_func):
         self._filters[name] = filter_func
 
     def static(self, path, resource, mimetype='text/plain'):
         self._static[path + '/' + resource] = (resource, mimetype)
+
+    def error(self, error_code, mimetype='text/plain'):
+        def decorator(error_func):
+            self._error_handlers[error_code] = (error_func, mimetype)
+            return error_func
+        return decorator
 
     def redirect(self, path, req):
         """
@@ -106,9 +117,9 @@ class Beaker:
         """
         Find the URL for this function given the variables in kwargs.
         """
-        # Mutates this path list if we don't copy - more general _replace_path_var?
         paths = self._func_routes[func_name]
         func_vars = self._func_vars[func_name]
+        # Create a new paths list, otherwise we mutate the endpoint paths (bad)
         url_paths = []
         var_index = 0
         for i in range(len(paths)):
@@ -161,7 +172,7 @@ class Beaker:
 
     def _replace_path_vars(self, path, method, func_name):
         """
-        Populates the dictionary self._func_vars this function's URL vars.
+        Populates the dictionary self._func_vars this function's URL vars and their filter type.
         Returns a list representing this path with vars replaced with Beaker._VAR_KEY.
         """
         paths = self._path_to_list(path)
@@ -169,12 +180,12 @@ class Beaker:
             var = self._check_var(path_part)
             if var:
                 paths[i] = Beaker._VAR_KEY
-                type_func = str
+                filter_func = str
                 if ':' in var:
-                    type_name, var = var.split(':')
-                    if type_name in self._filters:
-                        type_func = self._filters[type_name]
-                self._func_vars[func_name].append((type_func, var))
+                    filter_name, var = var.split(':')
+                    if filter_name in self._filters:
+                        filter_func = self._filters[filter_name]
+                self._func_vars[func_name].append((filter_func, var))
         return paths
 
     def _check_var(self, path_part):
@@ -198,6 +209,21 @@ class Beaker:
         path_list = [''] + path_list
         return '/'.join(path_list)
     
+    def _create_error_response(self, status, message=None):
+        """
+        Call the appropriate error handler function for this status code.
+        """
+        if status not in self._error_handlers:
+            error_msg = 'Error: status {0} not found.'.format(status)
+            return Response(500, body=error_msg, mimetype='text/plan')
+        else:
+            if message is None:
+                message = Beaker._HTTP_CODES[status]
+            error_func, mimetype = self._error_handlers[status]
+            res = error_func(message)
+            res.mimetype = mimetype
+            return res
+    
     def request(self, req):
         """
         Takes a parameter req of type Request.
@@ -207,14 +233,15 @@ class Beaker:
         try:
             is_valid_req = self._validate_request(req)
             if is_valid_req is not None:
-                return Response(status=400, body=is_valid_req, mimetype='text/plain')
+                return self._create_error_response(400, is_valid_req)
             if req.path in self._static:
                 return self._handle_static_request(req)
             else:
                 return self._handle_endpoint_request(req)
         except Exception as e:
-            error = "Internal Server Error: {0}.".format(repr(e))
-            return Response(status=500, body=error, mimetype='text/plain')
+            #raise e
+            error_msg = 'Internal Server Error: {0}.'.format(repr(e))
+            return self._create_error_response(500, error_msg)
     
     def _get_kwargs(self, path, func_route, func_name):
         """
@@ -225,8 +252,8 @@ class Beaker:
         kwargs = {}
         try:
             for (key, value) in zip(func_vars, filter(lambda e: e not in func_route, path_list)):
-                type_func, var = key
-                kwargs[var] = type_func(value)
+                filter_func, var = key
+                kwargs[var] = filter_func(value)
             return kwargs
         except ValueError:
             return None
@@ -238,11 +265,11 @@ class Beaker:
         """
         func_data = self._find_route_func(req.path, req.method)
         if not func_data:
-            return Response(status=404, body='Resource not found.', mimetype='text/plain')
+            return self._create_error_response(404, 'Resource not found.')
         func_name, mimetype, func_route = func_data
         kwargs = self._get_kwargs(req.path, func_route, func_name)
         if kwargs is None:
-            return Response(status=400, body='Wrong type in URL variable.', mimetype='text/plain')
+            return self._create_error_response(400, 'Wrong type in URL variable.')
         res = self._funcs[func_name](req, **kwargs)
         res.mimetype = mimetype
         if not res.status:
@@ -258,7 +285,7 @@ class Beaker:
         filename, mimetype = self._static[req.path]
         full_path = os.path.realpath('.') + '/' + filename
         if not os.path.isfile(full_path):
-            return Response(status=404, body='File not found.', mimetype='text/plain')
+            return self._create_error_response(404, 'File not found.')
         with open(filename, 'rb') as file:
             static_data = file.read()
         return Response(status=200, body=static_data, mimetype=mimetype)

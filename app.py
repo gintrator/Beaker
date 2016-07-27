@@ -6,6 +6,10 @@ from beaker import Response
 
 port = 5000
 app = Beaker("Beaker Application v0.1.")
+@app.error(404, mimetype='text/html')
+def four_oh_four(error):
+    html_error = '<h1>404</h1><p>{0}</p>'.format(error)
+    return Response(status=404, body=html_error)
 
 @app.get('/', mimetype='text/html')
 def index(req):

@@ -43,7 +43,7 @@ def func(req):
 
 Similarly the decorators `@app.post` and `@app.delete` do what you'd except.
 
-## Static Routes.
+## Static Routes
 
 Declare static resources using the `app.static(path, resource, mimetype='text/plain')` method. Here's a snippet to declare a static CSS file at `/static/style.css`.
 
@@ -97,6 +97,22 @@ def filtered(req, var):
 ```
 
 A request to `/strings,in,list` will print the strings 'strings', 'in', and 'list' to stdout.
+
+
+## Error Handling
+
+By default, Flask returns simple errors for 404, 400, and 500 statuses. To define your own error handling functions, use the `error` decorator. 
+
+The decorated function must take an argument `error`, a string describing the error. You can can also declare the mimetype, the default is `text/plain`.
+
+Make sure that the response contains the correct status code, or things will get confusing.
+
+```python
+@app.error(404, mimetype='text/html')
+def four_oh_four(error):
+  html_error = '<h1>404</h1><p>{0}</p>'.format(error)
+  return Response(status=404, body=html_error)
+```
 
 ## WSGI Server
 
