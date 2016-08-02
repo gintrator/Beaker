@@ -6,6 +6,7 @@ from beaker import Response
 
 port = 5000
 app = Beaker("Beaker Application v0.1.")
+
 @app.error(404, mimetype='text/html')
 def four_oh_four(error):
     html_error = '<h1>404</h1><p>{0}</p>'.format(error)
@@ -46,6 +47,7 @@ def json(req):
 def two(req, a='a', b='b'):
     text = "{0} {1}".format(a, b)
     return Response(body=text, status=200)
+
 
 @app.get('/<a>/<b>/<c>/<d>')
 def many(req, **args):

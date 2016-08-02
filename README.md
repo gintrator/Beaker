@@ -12,15 +12,16 @@ Both Beaker and pygi implement the [WSGI](https://www.python.org/dev/peps/pep-03
 
 ## Feature Overview
 
-Most features are implementations of things offered in Flask. This features include...
+Most features are implementations of things offered in Flask. These features include...
 
 - Route declaration via function decorators.
 - Support for URL variables in routes.
 - URL Variable types and filters.
 - Static routes.
 - Request redirection and URL building.
+- Error handling.
 - WSGI compliant, and a WSGI server to boot.
-- Tests.
+- Test suite.
 
 This project is an experiment in building a small full-stack web service framework (i.e. server -> framework -> app). This is mainly an attempt to figure out how something like Flask is implemented by duplicating some of its features.
 
@@ -101,7 +102,7 @@ A request to `/strings,in,list` will print the strings 'strings', 'in', and 'lis
 
 ## Error Handling
 
-By default, Flask returns simple errors for 404, 400, and 500 statuses. To define your own error handling functions, use the `error` decorator. 
+By default, Beaker returns simple errors for 404, 400, and 500 statuses. To define your own error handling functions, use the `error` decorator. 
 
 The decorated function must take an argument `error`, a string describing the error. You can can also declare the mimetype, the default is `text/plain`.
 
@@ -110,8 +111,8 @@ Make sure that the response contains the correct status code, or things will get
 ```python
 @app.error(404, mimetype='text/html')
 def four_oh_four(error):
-  html_error = '<h1>404</h1><p>{0}</p>'.format(error)
-  return Response(status=404, body=html_error)
+    html_error = '<h1>404</h1><p>{0}</p>'.format(error)
+    return Response(status=404, body=html_error)
 ```
 
 ## WSGI Server

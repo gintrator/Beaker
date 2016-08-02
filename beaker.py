@@ -71,8 +71,8 @@ class Beaker:
         self._filters = {'int': int, 'float': float, 'str': str}
 
         # Functions to handle errors and their mimetypes. Registered with the error decorator.
-        self._error_handlers = {404: (lambda m: Response(status=404, body=m), 'text/plain'),
-                                400: (lambda m: Response(status=400, body=m), 'text/plain'),
+        self._error_handlers = {400: (lambda m: Response(status=400, body=m), 'text/plain'),
+                                404: (lambda m: Response(status=404, body=m), 'text/plain'),
                                 500: (lambda m: Response(status=500, body=m), 'text/plain')} 
 
     def __call__(self, *args, **kwargs):
@@ -286,8 +286,8 @@ class Beaker:
         full_path = os.path.realpath('.') + '/' + filename
         if not os.path.isfile(full_path):
             return self._create_error_response(404, 'File not found.')
-        with open(filename, 'rb') as file:
-            static_data = file.read()
+        with open(filename, 'rb') as static_file:
+            static_data = static_file.read()
         return Response(status=200, body=static_data, mimetype=mimetype)
     
     def _validate_request(self, req):
