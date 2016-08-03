@@ -74,7 +74,7 @@ def list_me(req, var):
 def four(error):
     return Response(status=404, body='Hit the 404 handler.')
 
-app.static('/static', 'beaker.py')
+app.static('beaker.py')
 
 @tester.test
 def test_static_resource():

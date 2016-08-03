@@ -39,6 +39,13 @@ class Beaker:
     _VAR_KEY = ('var_key', )
     _FUNC_KEY = ('func_key', )
 
+    _MIMETYPES = {'css': 'text/css',
+                  'html': 'text/html',
+                  'png': 'image/png',
+                  'gif': 'image/gif',
+                  'js': 'text/javascript',
+                  'json': 'application/json',
+                  'pdf': 'application/pdf'}
     _VALID_METHODS = ('GET', 'POST', 'DELETE')
     _HTTP_CODES = {200: '200 OK',
                    400: '400 BAD REQUEST',
@@ -73,7 +80,11 @@ class Beaker:
         # Functions to handle errors and their mimetypes. Registered with the error decorator.
         self._error_handlers = {400: (lambda m: Response(status=400, body=m), 'text/plain'),
                                 404: (lambda m: Response(status=404, body=m), 'text/plain'),
-                                500: (lambda m: Response(status=500, body=m), 'text/plain')} 
+                                500: (lambda m: Response(status=500, body=m), 'text/plain')}
+
+        self._static_path = '/static'
+
+        self._static_cache = {}
 
     def __call__(self, *args, **kwargs):
         return self._wsgi_interface(*args, **kwargs)
@@ -97,9 +108,13 @@ class Beaker:
     def add_filter(self, name, filter_func):
         self._filters[name] = filter_func
 
-    def static(self, path, resource, mimetype='text/plain'):
-        self._static[path + '/' + resource] = (resource, mimetype)
+    def static(self, resource, mimetype='text/plain'):
+        self._static[self._static_path + '/' + resource] = (resource, mimetype)
 
+    def static_page(self, path, resource, mimetype='text/plain'):
+        self._static[path] = (resource, mimetype)
+
+    
     def error(self, error_code, mimetype='text/plain'):
         def decorator(error_func):
             self._error_handlers[error_code] = (error_func, mimetype)
@@ -234,7 +249,10 @@ class Beaker:
             is_valid_req = self._validate_request(req)
             if is_valid_req is not None:
                 return self._create_error_response(400, is_valid_req)
-            if req.path in self._static:
+            if self._static_path + req.path in self._static_cache:
+                static_data, mimetype = self._static_cache[self._static_path + req.path]
+                return Response(status=200, body=static_data, mimetype=mimetype)
+            elif req.path in self._static:
                 return self._handle_static_request(req)
             else:
                 return self._handle_endpoint_request(req)
@@ -258,6 +276,22 @@ class Beaker:
         except ValueError:
             return None
 
+    def _check_filesystem(self, file_name, mimetype=None):
+        full_path = os.path.realpath('.') + '/' + file_name
+        if not os.path.isfile(full_path):
+            return self._create_error_response(404, 'File not found.')
+        with open(full_path, 'rb') as static_file:
+            static_data = static_file.read()
+        if mimetype is None:
+            file_type = file_name.rsplit('.', 1).pop()
+            if file_type in Beaker._MIMETYPES:
+                mimetype = Beaker._MIMETYPES[file_type]
+            else:
+                mimetype = 'text/plain'
+        self._static_cache[file_name] = (static_data, mimetype)
+        return Response(status=200, body=static_data, mimetype=mimetype)
+
+    
     def _handle_endpoint_request(self, req):
         """
         Handle calling and returning data from registered endpoint.
@@ -265,7 +299,8 @@ class Beaker:
         """
         func_data = self._find_route_func(req.path, req.method)
         if not func_data:
-            return self._create_error_response(404, 'Resource not found.')
+            file_path = self._static_path + req.path
+            return self._check_filesystem(file_path)
         func_name, mimetype, func_route = func_data
         kwargs = self._get_kwargs(req.path, func_route, func_name)
         if kwargs is None:
@@ -283,13 +318,8 @@ class Beaker:
         Returns a Response containing the file content or not found.
         """
         filename, mimetype = self._static[req.path]
-        full_path = os.path.realpath('.') + '/' + filename
-        if not os.path.isfile(full_path):
-            return self._create_error_response(404, 'File not found.')
-        with open(filename, 'rb') as static_file:
-            static_data = static_file.read()
-        return Response(status=200, body=static_data, mimetype=mimetype)
-    
+        return self._check_filesystem(filename, mimetype)
+
     def _validate_request(self, req):
         """
         Validate request field.
@@ -310,7 +340,7 @@ class Beaker:
         req.method = env['REQUEST_METHOD']
         req.query = env['QUERY_STRING']
         req.args = {}
-        req.body = env['wsgi.input'].read()
+        #req.body = env['wsgi.input'].read()
         return req
 
     def _wsgi_interface(self, environ, start_response):
