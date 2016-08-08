@@ -46,11 +46,25 @@ Similarly the decorators `@app.post` and `@app.delete` do what you'd except.
 
 ## Static Routes
 
-Declare static resources using the `app.static(path, resource, mimetype='text/plain')` method. Here's a snippet to declare a static CSS file at `/static/style.css`.
+By default, static resources are located at the `/static` endpoint. This must correspond to a real folder in the app directory. Files in the static directory can be looked up by name. For example, if a page requests `http://site/style.css`, Beaker will search for the file `static/style.css`. To set the static path use the `app.set_static_path(path)` method.
 
 ```python
-app.static('static', 'style.css', mimetype='text/css')
+app.set_static_path('/new_static')
 ```
+
+Declare a static resource using the `app.static(resource, mimetype='text/plain')` method. The default Here's a snippet to declare a static CSS file at `/static/style.css`. The resource does not have to be in the static directory, in this case, but it will be served via the static endpoint.
+
+```python
+app.static(style.css, mimetype='text/css')
+```
+
+Declare a static page using the `app.static_page(path, resource, mimetype='text/html')` The resource will be available at whatever path is passed into the function. For example, to server the html page at `views/index.html` at `/`, use the following snippet.
+
+```python
+app.static_page('/', 'views/index.html')
+```
+
+Beaker caches static files internally, so a static page will only be read from disk once.
 
 ## Route Variables and Parameters
 To use URL variables, use brackets in the route declaration. Your declared arguments are injected into the handling function when the endpoint is called. URL parameters are marshalled into a Python dictionary and are available at `req.args`.

@@ -39,7 +39,8 @@ class Beaker:
     _VAR_KEY = ('var_key', )
     _FUNC_KEY = ('func_key', )
 
-    _MIMETYPES = {'css': 'text/css',
+    _MIMETYPES = {'plaintext': 'text/plain',
+                  'css': 'text/css',
                   'html': 'text/html',
                   'png': 'image/png',
                   'gif': 'image/gif',
@@ -82,8 +83,11 @@ class Beaker:
                                 404: (lambda m: Response(status=404, body=m), 'text/plain'),
                                 500: (lambda m: Response(status=500, body=m), 'text/plain')}
 
+        # Default static path. This is effectively the root server directory.
+        # Files in this directory are visible from the / route. 
         self._static_path = '/static'
-
+        
+        # Static file cache. Static resources are read from disk only once.
         self._static_cache = {}
 
     def __call__(self, *args, **kwargs):
@@ -111,9 +115,11 @@ class Beaker:
     def static(self, resource, mimetype='text/plain'):
         self._static[self._static_path + '/' + resource] = (resource, mimetype)
 
-    def static_page(self, path, resource, mimetype='text/plain'):
+    def static_page(self, path, resource, mimetype='text/html'):
         self._static[path] = (resource, mimetype)
 
+    def set_static_path(self, path):
+        self._static_path = path
     
     def error(self, error_code, mimetype='text/plain'):
         def decorator(error_func):
@@ -230,7 +236,7 @@ class Beaker:
         """
         if status not in self._error_handlers:
             error_msg = 'Error: status {0} not found.'.format(status)
-            return Response(500, body=error_msg, mimetype='text/plan')
+            return Response(500, body=error_msg, mimetype='text/plain')
         else:
             if message is None:
                 message = Beaker._HTTP_CODES[status]
@@ -340,7 +346,7 @@ class Beaker:
         req.method = env['REQUEST_METHOD']
         req.query = env['QUERY_STRING']
         req.args = {}
-        #req.body = env['wsgi.input'].read()
+        req.body = env['wsgi.input']
         return req
 
     def _wsgi_interface(self, environ, start_response):
