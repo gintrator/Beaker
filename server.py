@@ -1,6 +1,7 @@
 import socket
 import time
 import io
+import pprint
 
 CRLF = '\r\n'
 LOG = True
@@ -42,6 +43,7 @@ class Server:
         while True:
             connection_socket, address = self.server_socket.accept()
             data = connection_socket.recv(1024)
+            #print "LEN: {0}".format(len(data))
             req = self._parse_request(data)
             environ = self._create_environ(req)
             if LOG:
@@ -114,5 +116,13 @@ class Server:
         if 'body' in req:
             environ['wsgi.input'] = io.StringIO(u'{0}'.format(req['body']))
         return environ
+
+
+def app(environ, start_response):
+    start_response(200, [])
+    return ['OK']
+
+server = Server(5000, app)
+server.serve()
 
 

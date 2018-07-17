@@ -47,7 +47,9 @@ class Beaker:
                   'js': 'text/javascript',
                   'json': 'application/json',
                   'pdf': 'application/pdf'}
-    _VALID_METHODS = ('GET', 'POST', 'DELETE')
+
+    _VALID_METHODS = ('GET', 'POST', 'PUT', 'DELETE')
+
     _HTTP_CODES = {200: '200 OK',
                    400: '400 BAD REQUEST',
                    404: '404 NOT FOUND',
@@ -91,18 +93,39 @@ class Beaker:
         self._static_cache = {}
 
     def __call__(self, *args, **kwargs):
+        """
+        WSGI standard requires an app to be callable.
+        """
         return self._wsgi_interface(*args, **kwargs)
 
     def get(self, path, mimetype='text/plain'):
+        """
+        Register a GET endpoint.
+        """
         return self.register(path, 'GET', mimetype)
 
     def post(self, path, mimetype='text/plain'):
+        """
+        Register a POST endpoint.
+        """
         return self.register(path, 'POST', mimetype)
+    
+    def put(self, path, mimetype='text/plain'):
+        """
+        Register a PUT endpoint.
+        """
+        return self.register(path, 'PUT', mimetype)
 
     def delete(self, path, mimetype='text/plain'):
+        """
+        Register a DELETE endpoint.
+        """
         return self.register(path, 'DELETE', mimetype)
 
     def register(self, path, method='GET', mimetype='text/plain'):
+        """
+        Register a general endpoint.
+        """
         def decorator(func):
             self._funcs[func.__name__] = func
             self._add_route_func(path, method, func.__name__, mimetype)
@@ -110,18 +133,33 @@ class Beaker:
         return decorator
     
     def add_filter(self, name, filter_func):
+        """
+        Add a new URL variable filter function to this app.
+        """
         self._filters[name] = filter_func
 
     def static(self, resource, mimetype='text/plain'):
+        """
+        Define a static resource in the static location.
+        """
         self._static[self._static_path + '/' + resource] = (resource, mimetype)
 
     def static_page(self, path, resource, mimetype='text/html'):
+        """
+        Associate a static URL with a static resource.
+        """
         self._static[path] = (resource, mimetype)
 
     def set_static_path(self, path):
+        """
+        Set the static resource location. This is the 'base' directory for the app.
+        """
         self._static_path = path
     
     def error(self, error_code, mimetype='text/plain'):
+        """
+        Use the 'error' decorator to define error functions.
+        """
         def decorator(error_func):
             self._error_handlers[error_code] = (error_func, mimetype)
             return error_func
@@ -283,6 +321,10 @@ class Beaker:
             return None
 
     def _check_filesystem(self, file_name, mimetype=None):
+        """
+        Check the filesystem for a file that might not be a registered endpoint or static resource.
+        Returns a Response containing the resource or Not Found.
+        """
         full_path = os.path.realpath('.') + '/' + file_name
         if not os.path.isfile(full_path):
             return self._create_error_response(404, 'File not found.')
@@ -301,7 +343,7 @@ class Beaker:
     def _handle_endpoint_request(self, req):
         """
         Handle calling and returning data from registered endpoint.
-        Returns a Response containing the data or not found.
+        Returns a Response containing the data or Not Found.
         """
         func_data = self._find_route_func(req.path, req.method)
         if not func_data:
@@ -321,7 +363,7 @@ class Beaker:
         """
         Handle files registered with the self.static method.
         req.path is guaranteed to be in self._static, but not necessarily a valid file.
-        Returns a Response containing the file content or not found.
+        Returns a Response containing the file content or Not Found.
         """
         filename, mimetype = self._static[req.path]
         return self._check_filesystem(filename, mimetype)

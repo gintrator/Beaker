@@ -54,16 +54,17 @@ def many(req, **args):
     text = "{0}".format(args)
     return Response(body=text, status=200)
 
-app.static('/static', 'app.py')
-app.static('/static', 's.py')
-
-app.add_filter('list', lambda var: var.split(','))
-
 @app.get('/dict/<list:var>')
 def filter_dict(req, var):
     print type(var)
     print (var)
     return Response(body='OK', status=200)
+
+
+@app.post('/post')
+def posted(req):
+    print req.body.read()
+    return Response(body='got post', status=200)
 
 if __name__ == '__main__':
     use_wsgi_ref = False
