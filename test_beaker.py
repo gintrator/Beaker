@@ -1,6 +1,4 @@
-from beaker import Beaker
-from beaker import Request
-from beaker import Response
+from beaker import *
 
 class Tester:
 
@@ -24,15 +22,24 @@ class Tester:
         for test in self.tests:
             test()
         if len(self.failed) > 0:
-            print '{0}/{1} Tests Failed'.format(len(self.failed), len(self.tests))
-            print 'Failed Tests: ' + ' '.join(self.failed)
+            print('{0}/{1} Tests Failed'.format(len(self.failed), len(self.tests)))
+            print('Failed Tests: ' + ' '.join(self.failed))
         else:
-            print '{0} Tests Passed'.format(len(self.tests))
-        print '-----------------------'
+            print('{0} Tests Passed'.format(len(self.tests)))
+        print('-----------------------')
         for test in self.results:
-            print '{0}: {1}'.format(test, self.results[test])
+            print('{0}: {1}'.format(test, self.results[test]))
 
 tester = Tester()
+
+def assert_res(res, status=None, body=None):
+    if status:
+        msg = 'Got {0}, Expected {1}, body = "{2}'.format(res.status, status, res.body[:200])
+        assert res.status == status, msg
+    if body:
+        msg = 'Got "{0}" Expected "{1}" status = {2}'.format(res.body[:200],
+                body[:200], res.status)
+        assert res.body == body, msg
 
 app = Beaker('Test App')
 
@@ -82,22 +89,20 @@ def test_static_resource():
     res = app.request(req)
     with open('beaker.py', 'rb') as beaker_file:
         beaker_source = beaker_file.read()
-    assert res.status == 200, 'Status code not 200.'
-    assert res.body == beaker_source, 'Static content is incorrect.'
+    assert_res(res, 200, beaker_source)
 
 @tester.test
 def test_error_handler():
     req = Request(path="/lsdasdads", method="GET")
     res = app.request(req)
-    assert res.status == 404, 'Status code not 404.'
-    assert res.body == 'Hit the 404 handler.', 'Error body is incorrect.'
+    assert_res(res, 404, 'Hit the 404 handler.')
 
 @tester.test
 def test_filter():
     req = Request(path="/list/a,b,c", method="GET")
     res = app.request(req)
     a, b, c, filtered_type = res.body.split('/')
-    assert res.status == 200, 'Status code not 200.'
+    assert_res(res, 200)
     assert a == 'a', 'First argument wrong, not a.'
     assert b == 'b', 'Second argument wrong, not b.'
     assert a == 'a', 'Third argument wrong, not c.'
@@ -107,63 +112,57 @@ def test_filter():
 def test_arg_type():
     req = Request(path="/integer/6", method="GET")
     res = app.request(req)
-    assert res.status == 200, 'Status code not 200.'
-    assert res.body == str(int), 'Body is not of type int.'
+    assert_res(res, 200, str(int))
 
 @tester.test
 def test_redirect():
     req = Request(path="/redirect/huge", method="GET")
     res = app.request(req)
-    assert res.status == 200, 'Status code not 200.'
-    assert res.body == 'huge rat', 'Body is not "huge rat".'
+    assert_res(res, 200, 'huge rat')
 
 @tester.test
 def test_simple_endpoint():
     req = Request(path="/simple/endpoint", method="GET")
     res = app.request(req)
-    assert res.status == 200, 'Status code not 200.'
-    assert res.body == 'simple endpoint', 'Body is not "simple endpoint".'
+    assert_res(res, 200, 'simple endpoint')
 
 @tester.test
 def test_url_params():
     req = Request(path="/params", query="a=hello&b=there", method="GET")
     res = app.request(req)
-    assert res.status == 200, 'Status code not 200.'
-    assert res.body == 'hello there', 'Body is not "hello there".'
+    assert_res(res, 200, 'hello there')
 
 @tester.test
 def test_three_vars():
     req = Request(path="/vars/hello/there/not/me", method="GET")
     res = app.request(req)
-    assert res.status == 200, 'Status code not 200.'
-    assert res.body == 'hello there me', 'Body is not "hello there me".'
+    assert_res(res, 200, 'hello there me')
 
 @tester.test
 def test_one_var():
     req = Request(path="/vars/large/rat", method="GET")
     res = app.request(req)
-    assert res.status == 200, 'Status code not 200.'
-    assert res.body == 'large rat', 'Body is not "large rat".'
+    assert_res(res, 200, 'large rat')
 
 @tester.test
 def test_partial_path():
     req = Request(path="/vars/large", method="GET")
     res = app.request(req)
-    assert res.status == 404, 'Status code not 404.'
+    assert_res(res, 404)
 
 @tester.test
 def test_no_such_path():
     req = Request(path="/fake/path", method="GET")
     res = app.request(req)
-    assert res.status == 404, 'Status code not 404.'
+    assert_res(res, 404)
 
 @tester.test
 def test_paths():
     path_a = '/this/is/a/path'
     path_b = '/path/with/trailing/slash/'
     path_b_correct = '/path/with/trailing/slash'
-    assert app._list_to_path(app._path_to_list(path_a)) == path_a, 'Incorrect path.'
-    assert app._list_to_path(app._path_to_list(path_b)) == path_b_correct, 'Incorrect path.'
+    assert list_to_path(path_to_list(path_a)) == path_a, 'Incorrect path.'
+    assert list_to_path(path_to_list(path_b)) == path_b_correct, 'Incorrect path.'
 
 @tester.test
 def test_url_for():
@@ -173,14 +172,19 @@ def test_url_for():
 def test_invalid_url_query():
     req = Request(path="/simple/endpoint", query='a=g&g', method="GET")
     res = app.request(req)
-    assert res.status == 400, 'Invalid URL parameters not caught.'
+    assert_res(res, 400)
 
 @tester.test
-def test_invalid_url_query():
+def test_invalid_url_query2():
     req = Request(path="/simple/endpoint", method="PUTDELETE")
     res = app.request(req)
-    assert res.status == 400, 'Invalid HTTP method not returned as invalid.'
+    assert_res(res, 400)
 
 if __name__ == '__main__':
+    from pprint import pprint
+    #pprint(app._routes)
+    #pprint(app._funcs)
+    #pprint(app._func_routes)
+    #pprint(app._func_vars)
     tester.run()
 

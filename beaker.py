@@ -1,31 +1,62 @@
 import re
-import os.path
+import os
 from collections import defaultdict
 import pprint
 
-class DotDict(dict):
-    def __getattr__(self, attr):
-        return self.get(attr)
-    __setattr__ = dict.__setitem__
-    __delattr__ = dict.__delattr__
 
-class Request(DotDict):
+def check_var(path_part):
     """
-    Request object req will have:
-    method  -> REST Verb
-    path    -> URI
-    version -> HTTP Version
-    body    -> payload
+    Check if this part of the path is a variable.
+    Anything surrounding by angle brackets '<var>' is a variable.
     """
-    pass
+    match = re.search('<(.*)>', path_part)
+    return match.group(1) if match else None
 
-class Response(DotDict):
+
+def path_to_list(path):
     """
-    Response object res will have:
-    body   -> payload
-    status -> HTTP Status Code
+    Convert a path string to a path list.
     """
-    pass
+    return path.strip('/').split('/')
+
+
+def list_to_path(path_list):
+    """
+    Convert a path list to a path string.
+    """
+    path_list = [''] + path_list
+    return '/'.join(path_list)
+
+
+class Request:
+    """
+    Request objects describe HTTP requests with...
+    method: REST Verb, i.e. 'GET'
+    path:   URI, i.e. '/this/path'
+    query:  args, i.e. 'foo=bar&this=that'
+    body:   payload
+    """
+    
+    def __init__(self, method, path, query=None, body=None):
+        self.method = method
+        self.path = path
+        self.query = query
+        self.body = body
+
+
+class Response:
+    """
+    Response objects describe a server response with...
+    status:   HTTP status code, i.e. 200
+    body:     The requested data
+    mimetype: The type of data, i.e. 'text/html'
+    """
+
+    def __init__(self, status, body, mimetype='text/plain'):
+        self.status = status
+        self.body = body
+        self.mimetype = mimetype
+
 
 class Beaker:
 
@@ -34,34 +65,38 @@ class Beaker:
 
     Flask-like functionality
     """
-    
+
     # Store variables and functions as routes without using a string.
     _VAR_KEY = ('var_key', )
     _FUNC_KEY = ('func_key', )
 
-    _MIMETYPES = {'plaintext': 'text/plain',
-                  'css': 'text/css',
-                  'html': 'text/html',
-                  'png': 'image/png',
-                  'gif': 'image/gif',
-                  'js': 'text/javascript',
-                  'json': 'application/json',
-                  'pdf': 'application/pdf'}
+    _MIMETYPES = {
+            'text': 'text/plain',
+            'css': 'text/css',
+            'html': 'text/html',
+            'png': 'image/png',
+            'gif': 'image/gif',
+            'js': 'text/javascript',
+            'json': 'application/json',
+            'pdf': 'application/pdf'
+    }
 
     _VALID_METHODS = ('GET', 'POST', 'PUT', 'DELETE')
 
-    _HTTP_CODES = {200: '200 OK',
-                   400: '400 BAD REQUEST',
-                   404: '404 NOT FOUND',
-                   500: '500 INTERNAL SERVER ERROR'}
+    _HTTP_CODES = {
+            200: '200 OK',
+            400: '400 BAD REQUEST',
+            404: '404 NOT FOUND',
+            500: '500 INTERNAL SERVER ERROR'
+    }
 
     def __init__(self, name='default'):
         self.name = name
-        
+
         # self._routes stores a mapping of URL paths to functions.
         # Used to map incoming requests to function.
         self._routes = {}
-        
+
         # self._static stores a mapping of static paths to static resources.
         self._static = {}
 
@@ -71,7 +106,7 @@ class Beaker:
         # self._func_routes stores a mapping of function names to paths.
         # Used to recreate URL's from function names and URL variables.
         self._func_routes = {}
-        
+
         # self._func_vars stores a mapping of function names to its URL variables and types.
         # Used to call an endpoint function with the correct URL variables.
         self._func_vars = defaultdict(list)
@@ -81,14 +116,16 @@ class Beaker:
         self._filters = {'int': int, 'float': float, 'str': str}
 
         # Functions to handle errors and their mimetypes. Registered with the error decorator.
-        self._error_handlers = {400: (lambda m: Response(status=400, body=m), 'text/plain'),
-                                404: (lambda m: Response(status=404, body=m), 'text/plain'),
-                                500: (lambda m: Response(status=500, body=m), 'text/plain')}
+        self._error_handlers = {
+                400: (lambda m: Response(status=400, body=m), Beaker._MIMETYPES['text']),
+                404: (lambda m: Response(status=404, body=m), Beaker._MIMETYPES['text']),
+                500: (lambda m: Response(status=500, body=m), Beaker._MIMETYPES['text'])
+        }
 
         # Default static path. This is effectively the root server directory.
         # Files in this directory are visible from the / route. 
         self._static_path = '/static'
-        
+
         # Static file cache. Static resources are read from disk only once.
         self._static_cache = {}
 
@@ -142,7 +179,7 @@ class Beaker:
         """
         Define a static resource in the static location.
         """
-        self._static[self._static_path + '/' + resource] = (resource, mimetype)
+        self._static[os.path.join(self._static_path, resource)] = (resource, mimetype)
 
     def static_page(self, path, resource, mimetype='text/html'):
         """
@@ -187,7 +224,7 @@ class Beaker:
                 var_index += 1
             else:
                 url_paths.append(paths[i])
-        return self._list_to_path(url_paths)
+        return list_to_path(url_paths)
 
     def _add_route_func(self, path, method, func_name, mimetype):
         """
@@ -210,7 +247,7 @@ class Beaker:
         Walks the route tree.
         Return the tuple (func, mimetype, func_route) or None.
         """
-        paths = self._path_to_list(path)
+        paths = path_to_list(path)
         routes = self._routes
         func_route = tuple()
         func_signature = (Beaker._FUNC_KEY, method)
@@ -234,10 +271,10 @@ class Beaker:
         Populates the dictionary self._func_vars this function's URL vars and their filter type.
         Returns a list representing this path with vars replaced with Beaker._VAR_KEY.
         """
-        paths = self._path_to_list(path)
+        paths = path_to_list(path)
         for i, path_part in enumerate(paths):
-            var = self._check_var(path_part)
-            if var:
+            var = check_var(path_part)
+            if var is not None:
                 paths[i] = Beaker._VAR_KEY
                 filter_func = str
                 if ':' in var:
@@ -247,26 +284,6 @@ class Beaker:
                 self._func_vars[func_name].append((filter_func, var))
         return paths
 
-    def _check_var(self, path_part):
-        """
-        Check if this part of the path is a variable.
-        Anything surrounding by angle brackets '<var>' is a variable.
-        """
-        match = re.search('<(.*)>', path_part)
-        return match.group(1) if match else None
-
-    def _path_to_list(self, path):
-        """
-        Convert a path string to a path list.
-        """
-        return path.strip('/').split('/')
-
-    def _list_to_path(self, path_list):
-        """
-        Convert a path list to a path string.
-        """
-        path_list = [''] + path_list
-        return '/'.join(path_list)
     
     def _create_error_response(self, status, message=None):
         """
@@ -293,7 +310,7 @@ class Beaker:
             is_valid_req = self._validate_request(req)
             if is_valid_req is not None:
                 return self._create_error_response(400, is_valid_req)
-            if self._static_path + req.path in self._static_cache:
+            if os.path.join(self._static_path, req.path) in self._static_cache:
                 static_data, mimetype = self._static_cache[self._static_path + req.path]
                 return Response(status=200, body=static_data, mimetype=mimetype)
             elif req.path in self._static:
@@ -309,7 +326,7 @@ class Beaker:
         """
         Find the mapping of function args to values for this endpoint.
         """
-        path_list = self._path_to_list(path)
+        path_list = path_to_list(path)
         func_vars = self._func_vars[func_name]
         kwargs = {}
         try:
@@ -325,7 +342,7 @@ class Beaker:
         Check the filesystem for a file that might not be a registered endpoint or static resource.
         Returns a Response containing the resource or Not Found.
         """
-        full_path = os.path.realpath('.') + '/' + file_name
+        full_path = os.path.join(os.path.realpath('.'), file_name)
         if not os.path.isfile(full_path):
             return self._create_error_response(404, 'File not found.')
         with open(full_path, 'rb') as static_file:
@@ -347,7 +364,7 @@ class Beaker:
         """
         func_data = self._find_route_func(req.path, req.method)
         if not func_data:
-            file_path = self._static_path + req.path
+            file_path = os.path.join(self._static_path, req.path)
             return self._check_filesystem(file_path)
         func_name, mimetype, func_route = func_data
         kwargs = self._get_kwargs(req.path, func_route, func_name)
@@ -383,12 +400,13 @@ class Beaker:
         return None
     
     def _parse_env(self, env):
-        req = Request()
-        req.path = env['PATH_INFO']
-        req.method = env['REQUEST_METHOD']
-        req.query = env['QUERY_STRING']
-        req.args = {}
-        req.body = env['wsgi.input']
+        req = Request(
+                path=env['PATH_INFO'],
+                method=env['REQUEST_METHOD'],
+                query=env['QUERY_STRING'],
+                args={},
+                body=env['wsgi.input'],
+            )
         return req
 
     def _wsgi_interface(self, environ, start_response):

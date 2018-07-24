@@ -55,9 +55,11 @@ class Server:
 
     def _start_response_on_socket(self, connection_socket):
         def start_response(status, headers):
-            http_headers = ["HTTP/1.0 {0}".format(status),
-                            "Server: {0}".format(self.server_name),
-                            "Date: {0}".format(time.strftime('%a, %d %b %Y %H:%M:%S %Z'))]
+            http_headers = [
+                    "HTTP/1.0 {0}".format(status),
+                    "Server: {0}".format(self.server_name),
+                    "Date: {0}".format(time.strftime('%a, %d %b %Y %H:%M:%S %Z'))
+            ]
             for (header, value) in headers:
                 http_headers.append('{0}: {1}'.format(header, value))
             response = "{0}{1}{2}".format(CRLF.join(http_headers), CRLF, CRLF)
